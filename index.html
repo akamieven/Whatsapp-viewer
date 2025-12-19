@@ -3,181 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Viewer Pro</title>
+    <title>WhatsApp Analyzer Pro - Enhanced UI</title>
     <style>
         :root {
-            --whatsapp-bg: #e5ddd5;
-            --header-color: #075e54;
-            --msg-sent: #dcf8c6;
-            --msg-received: #ffffff;
+            --bg: #e5ddd5; --header: #075e54; --toolbar: #f0f2f5;
+            --msg-sent: #dcf8c6; --msg-received: #ffffff; --text: #000; --meta: #888;
+            --accent: #128c7e;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--whatsapp-bg); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .dark-mode {
+            --bg: #0b141a; --header: #202c33; --toolbar: #111b21;
+            --msg-sent: #005c4b; --msg-received: #202c33; --text: #e9edef; --meta: #8696a0;
+            --accent: #00a884;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text); transition: 0.3s; overflow: hidden; }
         
-        /* Header & Controls */
-        header { background: var(--header-color); color: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .toolbar { background: #f0f2f5; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border-bottom: 1px solid #ddd; }
-        input, button { padding: 8px 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
-        button { background: var(--header-color); color: white; cursor: pointer; transition: 0.3s; }
-        button:hover { opacity: 0.8; }
-        button:disabled { background: #ccc; }
+        header { background: var(--header); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* تحسين واجهة الإحصائيات */
+        .stats-wrapper { background: var(--toolbar); border-bottom: 1px solid #ccc; z-index: 999; }
+        .stats-header { padding: 10px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); font-weight: bold; }
+        .stats-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; display: flex; flex-wrap: wrap; gap: 10px; padding: 0 20px; }
+        .stats-content.open { max-height: 300px; padding: 15px 20px; overflow-y: auto; }
+        
+        .stat-card { background: var(--msg-received); padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-width: 140px; }
+        .stat-card .name { color: var(--accent); font-weight: bold; font-size: 14px; }
+        .stat-card .count { font-size: 18px; margin-top: 4px; }
 
-        /* Chat Area */
-        #chatContainer { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; }
+        .toolbar { background: var(--toolbar); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-bottom: 1px solid #ddd; }
         
-        /* Message Bubbles */
-        .message { max-width: 75%; padding: 8px 15px; border-radius: 15px; position: relative; font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.15); word-wrap: break-word; }
-        .sent { align-self: flex-end; background-color: var(--msg-sent); border-top-left-radius: 15px; }
-        .received { align-self: flex-start; background-color: var(--msg-received); border-top-right-radius: 15px; }
+        #chatContainer { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); scroll-behavior: smooth; }
+        .dark-mode #chatContainer { background-blend-mode: overlay; background-color: #0b141a; }
+
+        .message { max-width: 85%; padding: 10px 14px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); position: relative; font-size: 15px; }
+        .highlight-msg { outline: 3px solid #ffeb3b; outline-offset: 2px; }
+        .sent { align-self: flex-end; background: var(--msg-sent); border-top-left-radius: 0; }
+        .received { align-self: flex-start; background: var(--msg-received); border-top-right-radius: 0; }
+        .meta { font-size: 11px; color: var(--meta); display: block; margin-top: 6px; text-align: left; }
+
+        .search-nav { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 25px; border: 1px solid #ccc; }
+        .search-count { font-size: 13px; font-weight: bold; color: var(--accent); }
+
+        .bottom-nav { position: sticky; bottom: 0; background: var(--toolbar); padding: 12px; display: flex; justify-content: center; align-items: center; gap: 30px; border-top: 1px solid #ddd; }
+        button { padding: 8px 20px; border-radius: 20px; border: none; background: var(--header); color: white; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { background: #bbb; cursor: not-allowed; transform: none; }
         
-        .sender { font-weight: bold; color: #35cd96; font-size: 13px; display: block; margin-bottom: 3px; }
-        .meta { font-size: 11px; color: #888; text-align: left; margin-top: 5px; display: block; }
-        
-        /* Pagination Controls */
-        .pagination { display: flex; justify-content: center; gap: 20px; padding: 10px; background: #f0f2f5; border-top: 1px solid #ddd; }
-        .highlight { background-color: #ffeb3b; }
+        input { border-radius: 18px; border: 1px solid #ccc; padding: 6px 15px; background: var(--msg-received); color: var(--text); }
     </style>
 </head>
 <body>
 
-<header> <h2>Whatsapp akami viewer</h2> </header>
+<header>
+    <span>WhatsApp Pro Analyzer</span>
+    <button onclick="document.body.classList.toggle('dark-mode')" style="background: rgba(255,255,255,0.2);">🌙 وضع الرؤية</button>
+</header>
+
+<div class="stats-wrapper" id="statsWrapper" style="display:none;">
+    <div class="stats-header" onclick="document.getElementById('statsContent').classList.toggle('open')">
+        <span id="summaryText">إحصائيات الشات (اضغط للتوسيع) 📊</span>
+        <span>▼</span>
+    </div>
+    <div class="stats-content" id="statsContent">
+        </div>
+</div>
 
 <div class="toolbar">
     <input type="file" id="fileInput" accept=".txt">
-    <input type="text" id="searchBar" placeholder="بحث في النصوص..." disabled>
-    <div style="display:flex; align-items:center; gap:5px;">
-        <label>انتقل للتاريخ:</label>
-        <input type="date" id="datePicker" disabled>
+    <div class="search-nav">
+        <input type="text" id="searchBar" placeholder="بحث في 245 ألف رسالة..." disabled>
+        <span class="search-count" id="searchCount">0 / 0</span>
+        <button onclick="navigateSearch(-1)" id="prevSearch" disabled style="padding:2px 10px">↑</button>
+        <button onclick="navigateSearch(1)" id="nextSearch" disabled style="padding:2px 10px">↓</button>
     </div>
-    <span id="status">الرجاء رفع ملف .txt</span>
+    <input type="date" id="datePicker" disabled>
 </div>
 
-<div id="chatContainer">
-    </div>
+<div id="chatContainer"></div>
 
-<div class="pagination">
-    <button id="prevBtn" onclick="changePage(-1)" disabled>السابق (100 رسالة)</button>
-    <span id="pageInfo">الصفحة: 0</span>
-    <button id="nextBtn" onclick="changePage(1)" disabled>التالي (100 رسالة)</button>
+<div class="bottom-nav">
+    <button onclick="changePage(-1)" id="prevBtn" disabled>السابق</button>
+    <b id="pageInfo" style="min-width: 120px; text-align: center;">صفحة 0</b>
+    <button onclick="changePage(1)" id="nextBtn" disabled>التالي</button>
 </div>
 
 <script>
     let allMessages = [];
+    let searchResultsIndexes = [];
+    let currentSearchMatch = -1;
     let currentPage = 0;
     const pageSize = 100;
-    let filteredMessages = [];
 
     const fileInput = document.getElementById('fileInput');
     const chatContainer = document.getElementById('chatContainer');
-    const status = document.getElementById('status');
-    const datePicker = document.getElementById('datePicker');
     const searchBar = document.getElementById('searchBar');
 
     fileInput.onchange = function(e) {
         const file = e.target.files[0];
         const reader = new FileReader();
-        status.innerText = "جاري معالجة ربع مليون سطر... لحظات";
-
         reader.onload = function(event) {
-            const text = event.target.result;
-            // تقسيم متطور يدعم التواريخ بصيغة 12/19/25 أو 19/12/2025
-            const lines = text.split(/\n(?=\d{1,2}\/\d{1,2}\/\d{2,4})/);
-            
-            allMessages = lines.map(line => {
+            const lines = event.target.result.split(/\n(?=\d{1,2}\/\d{1,2}\/\d{2,4})/);
+            allMessages = lines.map((line, index) => {
                 const match = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}\s[APM]+)\s-\s([^:]+):\s([\s\S]+)/);
                 if (match) {
-                    return { 
-                        date: match[1], 
-                        time: match[2], 
-                        sender: match[3].trim(), 
-                        text: match[4].trim(),
-                        isoDate: convertToISODate(match[1]) // لتحويل التاريخ لصيغة يفهمها المتصفح
-                    };
+                    return { id: index, date: match[1], time: match[2], sender: match[3].trim(), text: match[4].trim(), iso: convertToISO(match[1]) };
                 }
                 return null;
             }).filter(m => m !== null);
-
-            filteredMessages = [...allMessages];
-            status.innerText = `تم تحميل ${allMessages.length} رسالة`;
-            enableControls();
+            
+            calculateStats();
+            enableUI();
             renderPage(0);
         };
         reader.readAsText(file);
     };
 
-    function enableControls() {
-        searchBar.disabled = false;
-        datePicker.disabled = false;
-        document.getElementById('nextBtn').disabled = false;
-        document.getElementById('prevBtn').disabled = false;
+    function calculateStats() {
+        document.getElementById('statsWrapper').style.display = 'block';
+        const statsContent = document.getElementById('statsContent');
+        const summaryText = document.getElementById('summaryText');
+        
+        const counts = {};
+        allMessages.forEach(m => counts[m.sender] = (counts[m.sender] || 0) + 1);
+
+        summaryText.innerText = `إجمالي الرسائل: ${allMessages.length.toLocaleString()} | عدد المشاركين: ${Object.keys(counts).length}`;
+
+        statsContent.innerHTML = '';
+        Object.entries(counts).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
+            const card = document.createElement('div');
+            card.className = 'stat-card';
+            card.innerHTML = `<span class="name">${name}</span><span class="count">${count.toLocaleString()}</span>`;
+            statsContent.appendChild(card);
+        });
     }
 
-    function renderPage(page) {
+    function renderPage(page, highlightId = null) {
         currentPage = page;
-        const start = page * pageSize;
-        const end = start + pageSize;
-        const toDisplay = filteredMessages.slice(start, end);
-        
         chatContainer.innerHTML = '';
+        const start = page * pageSize;
+        const toDisplay = allMessages.slice(start, start + pageSize);
+        
         toDisplay.forEach(m => {
             const div = document.createElement('div');
-            // تحديد جهة الرسالة بناءً على اسم المرسل الأول
-            div.className = `message ${m.sender === allMessages[0].sender ? 'received' : 'sent'}`;
-            div.innerHTML = `
-                <span class="sender">${m.sender}</span>
-                <div class="text">${m.text.replace(/\n/g, '<br>')}</div>
-                <span class="meta">${m.date} - ${m.time}</span>
-            `;
+            div.className = `message ${m.sender === allMessages[0].sender ? 'received' : 'sent'} ${m.id === highlightId ? 'highlight-msg' : ''}`;
+            div.id = `msg-${m.id}`;
+            div.innerHTML = `<b style="color:var(--accent); font-size:13px">${m.sender}</b><br>${m.text.replace(/\n/g,'<br>')}<span class="meta">${m.date} | ${m.time}</span>`;
             chatContainer.appendChild(div);
         });
         
-        document.getElementById('pageInfo').innerText = `الصفحة ${currentPage + 1} من ${Math.ceil(filteredMessages.length / pageSize)}`;
-        chatContainer.scrollTop = 0;
-    }
+        document.getElementById('pageInfo').innerText = `صفحة ${currentPage + 1} من ${Math.ceil(allMessages.length / pageSize)}`;
+        updateNavButtons();
 
-    function changePage(step) {
-        const newPage = currentPage + step;
-        if (newPage >= 0 && newPage * pageSize < filteredMessages.length) {
-            renderPage(newPage);
+        if (highlightId) {
+            setTimeout(() => {
+                const el = document.getElementById(`msg-${highlightId}`);
+                if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 200);
         }
     }
 
-    // البحث بالتاريخ
-    datePicker.onchange = function() {
-        const selected = this.value; // YYYY-MM-DD
-        const index = allMessages.findIndex(m => m.isoDate === selected);
-        if (index !== -1) {
-            filteredMessages = [...allMessages]; // الغاء أي بحث نصي
-            const pageOfDate = Math.floor(index / pageSize);
-            renderPage(pageOfDate);
-            status.innerText = `تم الانتقال لتاريخ ${selected}`;
-        } else {
-            alert("لم يتم العثور على رسائل في هذا التاريخ");
-        }
-    };
+    function navigateSearch(direction) {
+        if (searchResultsIndexes.length === 0) return;
+        currentSearchMatch = (currentSearchMatch + direction + searchResultsIndexes.length) % searchResultsIndexes.length;
+        const targetId = searchResultsIndexes[currentSearchMatch];
+        const targetPage = Math.floor(allMessages.findIndex(m => m.id === targetId) / pageSize);
+        document.getElementById('searchCount').innerText = `${currentSearchMatch + 1} / ${searchResultsIndexes.length}`;
+        renderPage(targetPage, targetId);
+    }
 
-    // البحث النصي
     searchBar.oninput = function() {
-        const query = this.value.toLowerCase();
-        if (query.length > 2) {
-            filteredMessages = allMessages.filter(m => m.text.toLowerCase().includes(query));
-            renderPage(0);
-            status.innerText = `نتائج البحث: ${filteredMessages.length}`;
-        } else if (query.length === 0) {
-            filteredMessages = [...allMessages];
-            renderPage(0);
+        const q = this.value.toLowerCase();
+        if (q.length < 2) { 
+            searchResultsIndexes = []; 
+            document.getElementById('searchCount').innerText = "0 / 0"; 
+            return; 
         }
+        searchResultsIndexes = allMessages.filter(m => m.text.toLowerCase().includes(q)).map(m => m.id);
+        document.getElementById('searchCount').innerText = `0 / ${searchResultsIndexes.length}`;
+        currentSearchMatch = -1;
+        document.getElementById('nextSearch').disabled = document.getElementById('prevSearch').disabled = searchResultsIndexes.length === 0;
     };
 
-    function convertToISODate(waDate) {
-        // يحول من MM/DD/YY إلى YYYY-MM-DD
-        const parts = waDate.split('/');
-        let month = parts[0].padStart(2, '0');
-        let day = parts[1].padStart(2, '0');
-        let year = parts[2];
-        if (year.length === 2) year = "20" + year;
-        return `${year}-${month}-${day}`;
+    function changePage(step) { renderPage(currentPage + step); }
+    function updateNavButtons() {
+        document.getElementById('prevBtn').disabled = currentPage === 0;
+        document.getElementById('nextBtn').disabled = (currentPage + 1) * pageSize >= allMessages.length;
     }
+    function enableUI() {
+        searchBar.disabled = false;
+        document.getElementById('datePicker').disabled = false;
+    }
+    function convertToISO(d) {
+        const p = d.split('/');
+        return `${p[2].length===2?'20'+p[2]:p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;
+    }
+    document.getElementById('datePicker').onchange = function() {
+        const idx = allMessages.findIndex(m => m.iso === this.value);
+        if (idx !== -1) renderPage(Math.floor(idx / pageSize), allMessages[idx].id);
+    };
 </script>
-
 </body>
 </html>
