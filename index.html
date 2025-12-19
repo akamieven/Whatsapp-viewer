@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Viewer Pro</title>
+    <style>
+        :root {
+            --whatsapp-bg: #e5ddd5;
+            --header-color: #075e54;
+            --msg-sent: #dcf8c6;
+            --msg-received: #ffffff;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--whatsapp-bg); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Header & Controls */
+        header { background: var(--header-color); color: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .toolbar { background: #f0f2f5; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border-bottom: 1px solid #ddd; }
+        input, button { padding: 8px 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        button { background: var(--header-color); color: white; cursor: pointer; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
+        button:disabled { background: #ccc; }
+
+        /* Chat Area */
+        #chatContainer { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; }
+        
+        /* Message Bubbles */
+        .message { max-width: 75%; padding: 8px 15px; border-radius: 15px; position: relative; font-size: 15px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.15); word-wrap: break-word; }
+        .sent { align-self: flex-end; background-color: var(--msg-sent); border-top-left-radius: 15px; }
+        .received { align-self: flex-start; background-color: var(--msg-received); border-top-right-radius: 15px; }
+        
+        .sender { font-weight: bold; color: #35cd96; font-size: 13px; display: block; margin-bottom: 3px; }
+        .meta { font-size: 11px; color: #888; text-align: left; margin-top: 5px; display: block; }
+        
+        /* Pagination Controls */
+        .pagination { display: flex; justify-content: center; gap: 20px; padding: 10px; background: #f0f2f5; border-top: 1px solid #ddd; }
+        .highlight { background-color: #ffeb3b; }
+    </style>
+</head>
+<body>
+
+<header> <h2>Whatsapp akami viewer</h2> </header>
+
+<div class="toolbar">
+    <input type="file" id="fileInput" accept=".txt">
+    <input type="text" id="searchBar" placeholder="بحث في النصوص..." disabled>
+    <div style="display:flex; align-items:center; gap:5px;">
+        <label>انتقل للتاريخ:</label>
+        <input type="date" id="datePicker" disabled>
+    </div>
+    <span id="status">الرجاء رفع ملف .txt</span>
+</div>
+
+<div id="chatContainer">
+    </div>
+
+<div class="pagination">
+    <button id="prevBtn" onclick="changePage(-1)" disabled>السابق (100 رسالة)</button>
+    <span id="pageInfo">الصفحة: 0</span>
+    <button id="nextBtn" onclick="changePage(1)" disabled>التالي (100 رسالة)</button>
+</div>
+
+<script>
+    let allMessages = [];
+    let currentPage = 0;
+    const pageSize = 100;
+    let filteredMessages = [];
+
+    const fileInput = document.getElementById('fileInput');
+    const chatContainer = document.getElementById('chatContainer');
+    const status = document.getElementById('status');
+    const datePicker = document.getElementById('datePicker');
+    const searchBar = document.getElementById('searchBar');
+
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        status.innerText = "جاري معالجة ربع مليون سطر... لحظات";
+
+        reader.onload = function(event) {
+            const text = event.target.result;
+            // تقسيم متطور يدعم التواريخ بصيغة 12/19/25 أو 19/12/2025
+            const lines = text.split(/\n(?=\d{1,2}\/\d{1,2}\/\d{2,4})/);
+            
+            allMessages = lines.map(line => {
+                const match = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}\s[APM]+)\s-\s([^:]+):\s([\s\S]+)/);
+                if (match) {
+                    return { 
+                        date: match[1], 
+                        time: match[2], 
+                        sender: match[3].trim(), 
+                        text: match[4].trim(),
+                        isoDate: convertToISODate(match[1]) // لتحويل التاريخ لصيغة يفهمها المتصفح
+                    };
+                }
+                return null;
+            }).filter(m => m !== null);
+
+            filteredMessages = [...allMessages];
+            status.innerText = `تم تحميل ${allMessages.length} رسالة`;
+            enableControls();
+            renderPage(0);
+        };
+        reader.readAsText(file);
+    };
+
+    function enableControls() {
+        searchBar.disabled = false;
+        datePicker.disabled = false;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('prevBtn').disabled = false;
+    }
+
+    function renderPage(page) {
+        currentPage = page;
+        const start = page * pageSize;
+        const end = start + pageSize;
+        const toDisplay = filteredMessages.slice(start, end);
+        
+        chatContainer.innerHTML = '';
+        toDisplay.forEach(m => {
+            const div = document.createElement('div');
+            // تحديد جهة الرسالة بناءً على اسم المرسل الأول
+            div.className = `message ${m.sender === allMessages[0].sender ? 'received' : 'sent'}`;
+            div.innerHTML = `
+                <span class="sender">${m.sender}</span>
+                <div class="text">${m.text.replace(/\n/g, '<br>')}</div>
+                <span class="meta">${m.date} - ${m.time}</span>
+            `;
+            chatContainer.appendChild(div);
+        });
+        
+        document.getElementById('pageInfo').innerText = `الصفحة ${currentPage + 1} من ${Math.ceil(filteredMessages.length / pageSize)}`;
+        chatContainer.scrollTop = 0;
+    }
+
+    function changePage(step) {
+        const newPage = currentPage + step;
+        if (newPage >= 0 && newPage * pageSize < filteredMessages.length) {
+            renderPage(newPage);
+        }
+    }
+
+    // البحث بالتاريخ
+    datePicker.onchange = function() {
+        const selected = this.value; // YYYY-MM-DD
+        const index = allMessages.findIndex(m => m.isoDate === selected);
+        if (index !== -1) {
+            filteredMessages = [...allMessages]; // الغاء أي بحث نصي
+            const pageOfDate = Math.floor(index / pageSize);
+            renderPage(pageOfDate);
+            status.innerText = `تم الانتقال لتاريخ ${selected}`;
+        } else {
+            alert("لم يتم العثور على رسائل في هذا التاريخ");
+        }
+    };
+
+    // البحث النصي
+    searchBar.oninput = function() {
+        const query = this.value.toLowerCase();
+        if (query.length > 2) {
+            filteredMessages = allMessages.filter(m => m.text.toLowerCase().includes(query));
+            renderPage(0);
+            status.innerText = `نتائج البحث: ${filteredMessages.length}`;
+        } else if (query.length === 0) {
+            filteredMessages = [...allMessages];
+            renderPage(0);
+        }
+    };
+
+    function convertToISODate(waDate) {
+        // يحول من MM/DD/YY إلى YYYY-MM-DD
+        const parts = waDate.split('/');
+        let month = parts[0].padStart(2, '0');
+        let day = parts[1].padStart(2, '0');
+        let year = parts[2];
+        if (year.length === 2) year = "20" + year;
+        return `${year}-${month}-${day}`;
+    }
+</script>
+
+</body>
+</html>
