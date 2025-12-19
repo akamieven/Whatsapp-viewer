@@ -3,198 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp akami viewer</title>
+    <title>WhatsApp Analyzer Pro</title>
     <style>
         :root {
             --bg: #e5ddd5; --header: #075e54; --toolbar: #f0f2f5;
             --msg-sent: #dcf8c6; --msg-received: #ffffff; --text: #000; --meta: #888;
-            --accent: #128c7e;
+            --accent: #128c7e; --highlight: #ffeb3b;
         }
         .dark-mode {
             --bg: #0b141a; --header: #202c33; --toolbar: #111b21;
             --msg-sent: #005c4b; --msg-received: #202c33; --text: #e9edef; --meta: #8696a0;
-            --accent: #00a884;
+            --accent: #00a884; --highlight: #604e00;
         }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text); transition: 0.3s; overflow: hidden; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text); transition: 0.3s; }
         
-        header { background: var(--header); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        header { background: var(--header); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         
-        /* تحسين واجهة الإحصائيات */
-        .stats-wrapper { background: var(--toolbar); border-bottom: 1px solid #ccc; z-index: 999; }
-        .stats-header { padding: 10px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03); font-weight: bold; }
-        .stats-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; display: flex; flex-wrap: wrap; gap: 10px; padding: 0 20px; }
-        .stats-content.open { max-height: 300px; padding: 15px 20px; overflow-y: auto; }
+        .toolbar { background: var(--toolbar); padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.1); }
         
-        .stat-card { background: var(--msg-received); padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-width: 140px; }
-        .stat-card .name { color: var(--accent); font-weight: bold; font-size: 14px; }
-        .stat-card .count { font-size: 18px; margin-top: 4px; }
+        #chatContainer { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-attachment: fixed; }
+        .dark-mode #chatContainer { background-blend-mode: multiply; background-color: #0b141a; }
 
-        .toolbar { background: var(--toolbar); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-bottom: 1px solid #ddd; }
+        .message { max-width: 75%; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); position: relative; font-size: 14.5px; line-height: 1.5; word-wrap: break-word; }
+        .sent { align-self: flex-end; background: var(--msg-sent); border-top-left-radius: 8px; }
+        .received { align-self: flex-start; background: var(--msg-received); border-top-right-radius: 8px; }
         
-        #chatContainer { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); scroll-behavior: smooth; }
-        .dark-mode #chatContainer { background-blend-mode: overlay; background-color: #0b141a; }
-
-        .message { max-width: 85%; padding: 10px 14px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.15); position: relative; font-size: 15px; }
-        .highlight-msg { outline: 3px solid #ffeb3b; outline-offset: 2px; }
-        .sent { align-self: flex-end; background: var(--msg-sent); border-top-left-radius: 0; }
-        .received { align-self: flex-start; background: var(--msg-received); border-top-right-radius: 0; }
-        .meta { font-size: 11px; color: var(--meta); display: block; margin-top: 6px; text-align: left; }
-
-        .search-nav { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 25px; border: 1px solid #ccc; }
-        .search-count { font-size: 13px; font-weight: bold; color: var(--accent); }
-
-        .bottom-nav { position: sticky; bottom: 0; background: var(--toolbar); padding: 12px; display: flex; justify-content: center; align-items: center; gap: 30px; border-top: 1px solid #ddd; }
-        button { padding: 8px 20px; border-radius: 20px; border: none; background: var(--header); color: white; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-        button:disabled { background: #bbb; cursor: not-allowed; transform: none; }
+        .sender-name { font-weight: bold; font-size: 12px; color: var(--accent); margin-bottom: 2px; display: block; }
+        .meta { font-size: 10px; color: var(--meta); margin-top: 4px; display: flex; justify-content: flex-end; gap: 5px; }
         
-        input { border-radius: 18px; border: 1px solid #ccc; padding: 6px 15px; background: var(--msg-received); color: var(--text); }
+        .highlight-text { background-color: var(--highlight); font-weight: bold; border-radius: 2px; }
+        .highlight-msg { ring: 3px solid var(--accent); animation: pulse 2s infinite; }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(18, 140, 126, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(18, 140, 126, 0); } 100% { box-shadow: 0 0 0 0 rgba(18, 140, 126, 0); } }
+
+        .stats-content { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 15px; background: var(--toolbar); display: none; }
+        .stat-card { background: var(--msg-received); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid rgba(0,0,0,0.05); }
+
+        .omitted { color: #888; font-style: italic; font-size: 13px; }
+        
+        /* تحسين استجابة الهواتف */
+        @media (max-width: 600px) { .message { max-width: 90%; } .toolbar { flex-direction: column; align-items: stretch; } }
     </style>
 </head>
 <body>
 
 <header>
-    <span>WhatsApp akami viewer</span>
-    <button onclick="document.body.classList.toggle('dark-mode')" style="background: rgba(255,255,255,0.2);">🌙 وضع الرؤية</button>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <strong>WhatsApp Viewer</strong>
+        <span id="fileStatus" style="font-size: 12px; opacity: 0.8;"></span>
+    </div>
+    <button onclick="document.body.classList.toggle('dark-mode')">🌓 وضع الرؤية</button>
 </header>
 
-<div class="stats-wrapper" id="statsWrapper" style="display:none;">
-    <div class="stats-header" onclick="document.getElementById('statsContent').classList.toggle('open')">
-        <span id="summaryText">إحصائيات الشات (اضغط للتوسيع) 📊</span>
-        <span>▼</span>
-    </div>
-    <div class="stats-content" id="statsContent">
-        </div>
-</div>
+<div id="statsPanel" class="stats-content"></div>
 
 <div class="toolbar">
     <input type="file" id="fileInput" accept=".txt">
-    <div class="search-nav">
-        <input type="text" id="searchBar" placeholder="بحث في الرسائل..." disabled>
-        <span class="search-count" id="searchCount">0 / 0</span>
-        <button onclick="navigateSearch(-1)" id="prevSearch" disabled style="padding:2px 10px">↑</button>
-        <button onclick="navigateSearch(1)" id="nextSearch" disabled style="padding:2px 10px">↓</button>
+    <input type="text" id="searchBar" placeholder="بحث في المحادثة..." disabled>
+    <div style="display:flex; align-items:center; gap:5px">
+        <button onclick="navigateSearch(-1)" id="prevSearch" disabled>↑</button>
+        <span id="searchCount">0/0</span>
+        <button onclick="navigateSearch(1)" id="nextSearch" disabled>↓</button>
     </div>
     <input type="date" id="datePicker" disabled>
 </div>
 
 <div id="chatContainer"></div>
 
-<div class="bottom-nav">
+<div class="bottom-nav" style="background: var(--toolbar); padding: 10px; display: flex; justify-content: center; align-items: center; gap: 15px; border-top: 1px solid #ddd;">
     <button onclick="changePage(-1)" id="prevBtn" disabled>السابق</button>
-    <b id="pageInfo" style="min-width: 120px; text-align: center;">صفحة 0</b>
+    <span id="pageInfo">صفحة 0 / 0</span>
     <button onclick="changePage(1)" id="nextBtn" disabled>التالي</button>
 </div>
 
 <script>
     let allMessages = [];
-    let searchResultsIndexes = [];
-    let currentSearchMatch = -1;
+    let searchResults = [];
+    let currentMatchIdx = -1;
     let currentPage = 0;
-    const pageSize = 100;
+    const pageSize = 150;
 
-    const fileInput = document.getElementById('fileInput');
-    const chatContainer = document.getElementById('chatContainer');
-    const searchBar = document.getElementById('searchBar');
+    // تحسين Regex ليدعم تنسيقات أكثر (بما فيها AM/PM بالعربي والإنجليزي)
+    const msgRegex = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}(?:\s?[APMapmصق]+)?)\s-\s([^:]+):\s([\s\S]+)/;
 
-    fileInput.onchange = function(e) {
+    document.getElementById('fileInput').onchange = function(e) {
         const file = e.target.files[0];
+        if (!file) return;
+        
         const reader = new FileReader();
         reader.onload = function(event) {
             const lines = event.target.result.split(/\n(?=\d{1,2}\/\d{1,2}\/\d{2,4})/);
             allMessages = lines.map((line, index) => {
-                const match = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}\s[APM]+)\s-\s([^:]+):\s([\s\S]+)/);
+                const match = line.match(msgRegex);
                 if (match) {
-                    return { id: index, date: match[1], time: match[2], sender: match[3].trim(), text: match[4].trim(), iso: convertToISO(match[1]) };
+                    return {
+                        id: index,
+                        date: match[1],
+                        time: match[2],
+                        sender: match[3].trim(),
+                        text: match[4].trim(),
+                        iso: convertToISO(match[1])
+                    };
                 }
                 return null;
             }).filter(m => m !== null);
-            
-            calculateStats();
-            enableUI();
-            renderPage(0);
+
+            if(allMessages.length > 0) {
+                document.getElementById('fileStatus').innerText = `تم تحميل ${allMessages.length} رسالة`;
+                showStats();
+                enableUI();
+                renderPage(0);
+            } else {
+                alert("تعذر التعرف على تنسيق الملف. تأكد أنه ملف نصي مصدّر من واتساب.");
+            }
         };
         reader.readAsText(file);
     };
 
-    function calculateStats() {
-        document.getElementById('statsWrapper').style.display = 'block';
-        const statsContent = document.getElementById('statsContent');
-        const summaryText = document.getElementById('summaryText');
+    function renderPage(page, highlightId = null, searchTerm = "") {
+        currentPage = page;
+        const container = document.getElementById('chatContainer');
+        container.innerHTML = '';
         
+        const start = page * pageSize;
+        const slice = allMessages.slice(start, start + pageSize);
+
+        slice.forEach(m => {
+            const isSent = m.sender === allMessages[0].sender;
+            const div = document.createElement('div');
+            div.className = `message ${isSent ? 'sent' : 'received'} ${m.id === highlightId ? 'highlight-msg' : ''}`;
+            div.id = `msg-${m.id}`;
+
+            let content = m.text
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // حماية XSS
+                .replace(/\n/g, '<br>')
+                .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); // تفعيل الروابط
+
+            if (searchTerm && searchTerm.length > 1) {
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                content = content.replace(regex, '<mark class="highlight-text">$1</mark>');
+            }
+
+            if(content.includes("&lt;Media omitted&gt;")) {
+                content = `<span class="omitted">📷 وسائط مرفقة</span>`;
+            }
+
+            div.innerHTML = `
+                <span class="sender-name">${m.sender}</span>
+                <div class="text">${content}</div>
+                <div class="meta"><span>${m.time}</span> <span>${m.date}</span></div>
+            `;
+            container.appendChild(div);
+        });
+
+        document.getElementById('pageInfo').innerText = `صفحة ${currentPage + 1} من ${Math.ceil(allMessages.length / pageSize)}`;
+        updateButtons();
+        if (highlightId) {
+            document.getElementById(`msg-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function showStats() {
+        const panel = document.getElementById('statsPanel');
+        panel.style.display = 'grid';
         const counts = {};
         allMessages.forEach(m => counts[m.sender] = (counts[m.sender] || 0) + 1);
-
-        summaryText.innerText = `إجمالي الرسائل: ${allMessages.length.toLocaleString()} | عدد المشاركين: ${Object.keys(counts).length}`;
-
-        statsContent.innerHTML = '';
-        Object.entries(counts).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
-            const card = document.createElement('div');
-            card.className = 'stat-card';
-            card.innerHTML = `<span class="name">${name}</span><span class="count">${count.toLocaleString()}</span>`;
-            statsContent.appendChild(card);
-        });
-    }
-
-    function renderPage(page, highlightId = null) {
-        currentPage = page;
-        chatContainer.innerHTML = '';
-        const start = page * pageSize;
-        const toDisplay = allMessages.slice(start, start + pageSize);
         
-        toDisplay.forEach(m => {
-            const div = document.createElement('div');
-            div.className = `message ${m.sender === allMessages[0].sender ? 'received' : 'sent'} ${m.id === highlightId ? 'highlight-msg' : ''}`;
-            div.id = `msg-${m.id}`;
-            div.innerHTML = `<b style="color:var(--accent); font-size:13px">${m.sender}</b><br>${m.text.replace(/\n/g,'<br>')}<span class="meta">${m.date} | ${m.time}</span>`;
-            chatContainer.appendChild(div);
-        });
-        
-        document.getElementById('pageInfo').innerText = `صفحة ${currentPage + 1} من ${Math.ceil(allMessages.length / pageSize)}`;
-        updateNavButtons();
-
-        if (highlightId) {
-            setTimeout(() => {
-                const el = document.getElementById(`msg-${highlightId}`);
-                if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 200);
-        }
+        panel.innerHTML = Object.entries(counts)
+            .sort((a,b) => b[1] - a[1])
+            .map(([name, count]) => `
+                <div class="stat-card">
+                    <div style="color:var(--accent); font-weight:bold; font-size:12px">${name}</div>
+                    <div style="font-size:18px">${count.toLocaleString()}</div>
+                </div>
+            `).join('');
     }
 
-    function navigateSearch(direction) {
-        if (searchResultsIndexes.length === 0) return;
-        currentSearchMatch = (currentSearchMatch + direction + searchResultsIndexes.length) % searchResultsIndexes.length;
-        const targetId = searchResultsIndexes[currentSearchMatch];
-        const targetPage = Math.floor(allMessages.findIndex(m => m.id === targetId) / pageSize);
-        document.getElementById('searchCount').innerText = `${currentSearchMatch + 1} / ${searchResultsIndexes.length}`;
-        renderPage(targetPage, targetId);
-    }
-
-    searchBar.oninput = function() {
-        const q = this.value.toLowerCase();
-        if (q.length < 2) { 
-            searchResultsIndexes = []; 
-            document.getElementById('searchCount').innerText = "0 / 0"; 
-            return; 
+    document.getElementById('searchBar').oninput = function() {
+        const term = this.value.toLowerCase();
+        if(term.length < 2) {
+            searchResults = [];
+            document.getElementById('searchCount').innerText = "0/0";
+            return;
         }
-        searchResultsIndexes = allMessages.filter(m => m.text.toLowerCase().includes(q)).map(m => m.id);
-        document.getElementById('searchCount').innerText = `0 / ${searchResultsIndexes.length}`;
-        currentSearchMatch = -1;
-        document.getElementById('nextSearch').disabled = document.getElementById('prevSearch').disabled = searchResultsIndexes.length === 0;
+        searchResults = allMessages.filter(m => m.text.toLowerCase().includes(term)).map(m => m.id);
+        document.getElementById('searchCount').innerText = `0/${searchResults.length}`;
+        currentMatchIdx = -1;
+        document.getElementById('nextSearch').disabled = document.getElementById('prevSearch').disabled = searchResults.length === 0;
     };
 
+    function navigateSearch(dir) {
+        if(!searchResults.length) return;
+        currentMatchIdx = (currentMatchIdx + dir + searchResults.length) % searchResults.length;
+        const msgId = searchResults[currentMatchIdx];
+        const page = Math.floor(allMessages.findIndex(m => m.id === msgId) / pageSize);
+        document.getElementById('searchCount').innerText = `${currentMatchIdx + 1}/${searchResults.length}`;
+        renderPage(page, msgId, document.getElementById('searchBar').value);
+    }
+
+    function convertToISO(d) {
+        const p = d.split('/');
+        if(p.length < 3) return "";
+        let year = p[2].length === 2 ? "20" + p[2] : p[2];
+        return `${year}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;
+    }
+
     function changePage(step) { renderPage(currentPage + step); }
-    function updateNavButtons() {
+    function updateButtons() {
         document.getElementById('prevBtn').disabled = currentPage === 0;
         document.getElementById('nextBtn').disabled = (currentPage + 1) * pageSize >= allMessages.length;
     }
     function enableUI() {
-        searchBar.disabled = false;
+        document.getElementById('searchBar').disabled = false;
         document.getElementById('datePicker').disabled = false;
-    }
-    function convertToISO(d) {
-        const p = d.split('/');
-        return `${p[2].length===2?'20'+p[2]:p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;
     }
     document.getElementById('datePicker').onchange = function() {
         const idx = allMessages.findIndex(m => m.iso === this.value);
